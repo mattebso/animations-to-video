@@ -1,0 +1,25 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Puppeteer downloads
+.cache/
+.local-chromium/
+
+# Mac
+.DS_Store
+._*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Scratch / smoke tests
+/tmp-renders/
+*.mov.tmp
+*.mp4.tmp
+smoketest.*

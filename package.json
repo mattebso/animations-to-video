@@ -1,0 +1,12 @@
+{
+  "name": "animations-to-video",
+  "version": "1.0.0",
+  "description": "Render HTML animations (Claude Design / Hermes / React Stage) to MP4 or ProRes .mov via headless Chrome + ffmpeg.",
+  "private": true,
+  "scripts": {
+    "render": "node scripts/render.js"
+  },
+  "dependencies": {
+    "puppeteer": "^23.0.0"
+  }
+}
