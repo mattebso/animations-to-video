@@ -2,7 +2,7 @@
 
 A Claude Code skill that converts HTML animations (Claude Design exports, Hermes-style explainers, React Stage zips) into rendered video files — MP4, ProRes 4444 with alpha, ProRes 422 HQ, and friends. Up to 4K at any common frame rate.
 
-Built for the Metics Media workflow where Claude Design generates HTML animations and an editor needs them as drop-in video clips for ScreenFlow / Premiere / After Effects.
+Built at [Metics Media](https://www.youtube.com/@MeticsMedia) for our editorial workflow — Claude Design generates HTML animations, an editor needs them as drop-in video clips for ScreenFlow / Premiere / After Effects. Open-sourced because it's useful for anyone doing the same.
 
 ## What it does
 
@@ -20,7 +20,7 @@ Two steps. Takes about three minutes the first time (puppeteer downloads ~200 MB
 
 ```bash
 # 1. Clone the repo into your Claude Code skills folder
-git clone git@github.com:mattebso/animations-to-video.git ~/.claude/skills/animations-to-video
+git clone https://github.com/mattebso/animations-to-video.git ~/.claude/skills/animations-to-video
 
 # 2. Install dependencies
 cd ~/.claude/skills/animations-to-video && npm install
@@ -142,7 +142,7 @@ Either works. Pattern A is the convention used by Claude Design today.
 
 ## Contributing
 
-This is an internal Metics Media tool. If you hit something the skill doesn't handle — a new animation API shape, a new format need, a bug — open an issue or a PR.
+PRs and issues welcome. If you hit something the skill doesn't handle — a new animation API shape, a new format need, a bug — open an issue or a PR.
 
 Bug reports should include:
 
@@ -150,8 +150,8 @@ Bug reports should include:
 - The settings you chose (resolution / fps / format)
 - The output from the renderer (terminal logs)
 
-For new features, ping in the team chat first to make sure it makes sense as a skill addition vs. a one-off script.
+For larger new features, open an issue first to discuss before sinking time into a PR.
 
 ## License
 
-Proprietary. Metics Media internal use only. See [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE).
