@@ -1,6 +1,6 @@
 # animations-to-video
 
-A Claude Code skill that converts HTML animations (Claude Design exports, Hermes-style explainers, React Stage zips) into rendered video files — MP4, ProRes 4444 with alpha, ProRes 422 HQ, and friends. Up to 4K at any common frame rate.
+A Claude Code skill that converts HTML animations (Claude Design exports, explainers, React Stage zips) into rendered video files — MP4, ProRes 4444 with alpha, ProRes 422 HQ, and friends. Up to 4K at any common frame rate.
 
 Built at [Metics Media](https://www.youtube.com/@MeticsMedia) for our editorial workflow — Claude Design generates HTML animations, an editor needs them as drop-in video clips for ScreenFlow / Premiere / After Effects. Open-sourced because it's useful for anyone doing the same.
 
