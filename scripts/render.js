@@ -67,18 +67,33 @@ if (!FFMPEG_FORMATS[FORMAT]) {
 
 const ALPHA = FORMAT === 'prores4444-alpha';
 
+// ── Babel detection ─────────────────────────────────────────────────────
+// Pages that use in-browser Babel (`<script type="text/babel">`) crash
+// Chromium when combined with deviceScaleFactor=2 — the JSX compile + a
+// hi-DPR render context is too much for headless. Workaround: render
+// Babel pages at DSF=1 (native CSS resolution) and upscale via ffmpeg.
+const sourceHtml = fs.readFileSync(INPUT, 'utf8');
+const USES_BABEL = /<script[^>]*type=["']text\/babel["']/i.test(sourceHtml);
+
 // ── viewport math ───────────────────────────────────────────────────────
 // CSS viewport stays at 1920×1080 (so the HTML lays out at its designed size).
-// deviceScaleFactor scales the screenshot up: DSF=1 → 1920×1080, DSF=2 → 3840×2160.
+// For non-Babel pages: deviceScaleFactor scales the screenshot natively.
+// For Babel pages: DSF=1 always, ffmpeg upscales.
 const WIDTH  = 1920;
 const HEIGHT = 1080;
-const DSF    = RES === 2160 ? 2 : 1;
+const DSF    = (USES_BABEL || RES === 1080) ? 1 : 2;
+// Output pixel dimensions (what we want in the final file)
+const OUT_W  = RES === 2160 ? 3840 : 1920;
+const OUT_H  = RES === 2160 ? 2160 : 1080;
+// Whether ffmpeg needs to upscale (screenshot smaller than target)
+const NEEDS_UPSCALE = (WIDTH * DSF) < OUT_W;
 
 // ── main ────────────────────────────────────────────────────────────────
 (async () => {
   console.error(`[a2v] input:  ${INPUT}`);
   console.error(`[a2v] out:    ${OUT}`);
-  console.error(`[a2v] res:    ${WIDTH * DSF}×${HEIGHT * DSF} (DSF=${DSF})`);
+  console.error(`[a2v] capture: ${WIDTH * DSF}×${HEIGHT * DSF} (DSF=${DSF})${USES_BABEL ? ' [Babel path]' : ''}`);
+  console.error(`[a2v] target: ${OUT_W}×${OUT_H}${NEEDS_UPSCALE ? ' (ffmpeg upscale)' : ''}`);
   console.error(`[a2v] fps:    ${FPS}`);
   console.error(`[a2v] format: ${FORMAT}${ALPHA ? ' (alpha)' : ''}`);
 
@@ -87,19 +102,27 @@ const DSF    = RES === 2160 ? 2 : 1;
     '--hide-scrollbars',
     '--disable-web-security',
     '--allow-file-access-from-files',
-    `--force-device-scale-factor=${DSF}`,
     '--autoplay-policy=no-user-gesture-required',
   ];
-  if (ALPHA) launchArgs.push('--default-background-color=00000000');
+  // Only pass --force-device-scale-factor when DSF > 1 (avoids crash on Babel pages).
+  if (DSF > 1) launchArgs.push(`--force-device-scale-factor=${DSF}`);
+  // --default-background-color=00000000 used to be passed for alpha mode,
+  // but it triggers "Requesting main frame too early!" on Babel pages.
+  // omitBackground:true on the screenshot is sufficient on its own.
 
   const browser = await puppeteer.launch({
-    headless: 'new',
+    // Old headless mode: more stable than 'new' for pages with in-browser
+    // Babel + alpha rendering. The 'new' mode hits "Requesting main frame
+    // too early!" on Babel-heavy pages mid-navigation.
+    headless: true,
     args: launchArgs,
     defaultViewport: { width: WIDTH, height: HEIGHT, deviceScaleFactor: DSF },
   });
 
   const page = await browser.newPage();
-  await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: DSF });
+  // Note: viewport is already set via `defaultViewport` in launch options above.
+  // An explicit page.setViewport() here races with Babel-using pages (CDP
+  // emulation calls fail with "Session closed") and is redundant in any case.
 
   // Build the URL query string.
   // - autoplay=0: pause at t=0, we drive time
@@ -118,7 +141,11 @@ const DSF    = RES === 2160 ? 2 : 1;
   fileUrl.search = params.toString();
   const url = fileUrl.href;
   console.error(`[a2v] loading ${url}`);
-  await page.goto(url, { waitUntil: 'networkidle0' });
+  // 'load' fires when DOMContentLoaded + onload have fired, regardless of pending
+  // network. networkidle0 hangs/detaches with in-browser Babel + Google Fonts pages.
+  // The page's seek API is detected via waitForFunction below, so we don't need to
+  // wait for "network idle" here.
+  await page.goto(url, { waitUntil: 'load', timeout: 30000 });
 
   // Belt-and-suspenders transparency: some HTMLs set the gradient on both
   // `html, body` but the `?bg=transparent` override only targets `body`.
@@ -159,13 +186,15 @@ const DSF    = RES === 2160 ? 2 : 1;
   const frameCount = Math.ceil(durationSec * FPS);
   console.error(`[a2v] rendering ${frameCount} frames`);
 
-  // Spawn ffmpeg.
+  // Spawn ffmpeg. If the screenshot is smaller than the requested output
+  // resolution, ffmpeg upscales with lanczos (clean for vector-style content).
   const ffArgs = [
     '-y',
     '-f', 'image2pipe',
     '-vcodec', 'png',
     '-framerate', String(FPS),
     '-i', '-',
+    ...(NEEDS_UPSCALE ? ['-vf', `scale=${OUT_W}:${OUT_H}:flags=lanczos`] : []),
     ...FFMPEG_FORMATS[FORMAT],
     '-r', String(FPS),
     OUT,
